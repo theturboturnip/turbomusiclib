@@ -14,8 +14,31 @@ import java.util.List;
  * @author samuel
  */
 public abstract class Library {
-    public abstract List<Integer> getAllSongIds();
-    public abstract List<Integer> getFilteredSongIds(LibraryFilter baseFilter);
+    /*
+ 
+    
+    
+    public abstract int getNextArtistId();
+    public abstract void addArtist(Artist toAdd); // Dumb add, doesn't do any checks
+    
+    public abstract int getNextAlbumId();
+    public abstract void addAlbum(Album toAdd); // Dumb add, doesn't do any checks
+    
+    public abstract int getNextSongId();
+    public abstract void addSong(Song toAdd); // Dumb add, doesn't do any checks*/
+    
+    public abstract SongCollectionSource getSource(int index);
+    public abstract void addSource(SongCollectionSource source);
+    public abstract void removeSource(int index);
+    public abstract void updateSource(int index, SongCollectionSource newSource);
+    public void updateKnownSongs(){
+        updateKnownSongs(false);
+    }
+    public abstract void updateKnownSongs(boolean forceUpdateAll);
+    public abstract int getSourceCount();
+    
+    public abstract List<SongId> getAllSongIds();
+    public abstract List<SongId> getFilteredSongIds(LibraryFilter baseFilter);
     public abstract List<Integer> getAllAlbumIds();
     public abstract List<Integer> getAllArtistIds();
 
@@ -32,30 +55,29 @@ public abstract class Library {
         return new Album(album, newId);
     }
     
-    public List<Integer> getSongIdsInAlbum(Album album){
+    public List<SongId> getSongIdsInAlbum(Album album){
         return getSongIdsInAlbum(album.id);
     }
-    public abstract List<Integer> getSongIdsInAlbum(int albumId);
+    public abstract List<SongId> getSongIdsInAlbum(int albumId);
     
-    public List<Integer> getSongIdsByArtist(Artist artist){
+    public List<SongId> getSongIdsByArtist(Artist artist){
         return getSongIdsByArtist(artist.id);
     }
-    public abstract List<Integer> getSongIdsByArtist(int artistId);
+    public abstract List<SongId> getSongIdsByArtist(int artistId);
     
     public List<Integer> getAlbumIdsByArtist(Artist artist){
         return getAlbumIdsByArtist(artist.id);
     }
     public abstract List<Integer> getAlbumIdsByArtist(int artistId);
     
-    public List<Song> getSongsFromIds(List<Integer> ids){
+    public List<Song> getSongsFromIds(List<SongId> ids){
         List<Song> songs = new ArrayList<>(ids.size());
-        for (Integer id : ids){
+        for (SongId id : ids){
             songs.add(getSongFromId(id));
         }
         return songs;
     }
-    public abstract Song getSongFromId(int id);
- 
+    public abstract Song getSongFromId(SongId id);
     public List<Album> getAlbumsFromIds(List<Integer> ids){
         List<Album> albums = new ArrayList<>(ids.size());
         for (Integer id : ids){
@@ -73,13 +95,4 @@ public abstract class Library {
         return artists;
     }
     public abstract Artist getArtistFromId(int id);
-    
-    public abstract int getNextArtistId();
-    public abstract void addArtist(Artist toAdd); // Dumb add, doesn't do any checks
-    
-    public abstract int getNextAlbumId();
-    public abstract void addAlbum(Album toAdd); // Dumb add, doesn't do any checks
-    
-    public abstract int getNextSongId();
-    public abstract void addSong(Song toAdd); // Dumb add, doesn't do any checks
 }

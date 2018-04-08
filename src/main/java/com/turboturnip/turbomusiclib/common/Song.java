@@ -52,41 +52,31 @@ public class Song {
                 return resultantInputFile();
             }
         }
-//enum AccessType {
-        //    LocalFile,
-        //    DownloadedFile,
-        //    Stream
-        //}
-        /*public AccessType getAccessType();
-        public String getNetworkAddress(); // The location of the file on the network (can be URL) or the identifier for the song on a streaming service.
-        public String getDownloadsSubfolder(); // The subfolder of the downloads folder which the files will be downloaded to.
-        public String getDownloadFilename(); // The name of the downloaded file. Should be consistent between runs, so that existing downloads can be reused.
-        public String getSourceFile(); // The local source file. Used if the file isn't downloaded.
-        public String getOutputFile();*/
-//public String getDownloadSubfolder();
-        //public String getDownloadFilename();
-        //public String getLocalFilename(); // Either the location of the local file, or where the downloaded file will end up
     }
-    public final int id;
+    public final SongId id;
     public final Source source;
     public final String name;
     public final int artistId;
     public final int albumId;
+    public final int albumIndex;
     
-    public Song(Song copyFrom, int newId){
-        this(newId, copyFrom.source, copyFrom.name, copyFrom.artistId, copyFrom.albumId);
+    public Song(Song copyFrom, SongId newId){
+        this(newId, copyFrom.source, copyFrom.name, copyFrom.artistId, copyFrom.albumId, copyFrom.albumIndex);
     }
-    public Song(Song copyFrom, int newId, int newAlbumId){
-        this(newId, copyFrom.source, copyFrom.name, copyFrom.artistId, newAlbumId);
+    public Song(Song copyFrom, SongId newId, int newAlbumId){
+        this(newId, copyFrom.source, copyFrom.name, copyFrom.artistId, newAlbumId, copyFrom.albumIndex);
     }
-    public Song(int id, Source source, String name, Album album){
-        this(id, source, name, album.artistId, album.id);
+    public Song(Song copyFrom, SongId newId, int newArtistId, int newAlbumId){
+        this(newId, copyFrom.source, copyFrom.name, newArtistId, newAlbumId, copyFrom.albumIndex);
     }
-    public Song(int id, Source source, String name, Artist artist){
-        this(id, source, name, artist.id, -1);
+    public Song(SongId id, Source source, String name, Album album, int albumIndex){
+        this(id, source, name, album.artistId, album.id, albumIndex);
     }
-    public Song(int id, Source source, String name, int artistId, int albumId){
-        assert(id >= 0);
+    public Song(SongId id, Source source, String name, Artist artist){
+        this(id, source, name, artist.id, -1, -1);
+    }
+    public Song(SongId id, Source source, String name, int artistId, int albumId, int albumIndex){
+        assert(id.songIndex >= 0);
         assert(source != null);
         assert(name != null);
         assert(artistId >= 0);
@@ -96,15 +86,16 @@ public class Song {
         this.name = name;
         this.artistId = artistId;
         this.albumId = albumId;
+        this.albumIndex = albumIndex;
     }
     
     @Override
     public boolean equals(Object o){
         if (!(o instanceof Song)) return false;
-        return id == ((Song)o).id;
+        return id.equals(((Song)o).id);
     }
     @Override
     public int hashCode(){
-        return id;
+        return id.hashCode();
     }
 }
