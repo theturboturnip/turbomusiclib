@@ -3,17 +3,17 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.turboturnip.turbomusiclib.common.filters;
+package com.turboturnip.turbomusiclib.common.library_filters;
 
 /**
  *
  * @author samuel
  */
-public class LibraryFilterOR extends LibraryFilter {
-    // Should evaluate to (a OR b OR c...)
+public class LibraryFilterAND extends LibraryFilter{
+    // Should evaluate to (a AND b AND c...)
     LibraryFilter[] subfilters;
     
-    public LibraryFilterOR(LibraryFilter... subfilters){
+    public LibraryFilterAND(LibraryFilter... subfilters){
         this.subfilters = subfilters;
     }
 }

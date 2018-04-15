@@ -5,7 +5,7 @@
  */
 package com.turboturnip.turbomusiclib.common;
 
-import com.turboturnip.turbomusiclib.common.filters.LibraryFilter;
+import com.turboturnip.turbomusiclib.common.library_filters.LibraryFilter;
 import java.util.ArrayList;
 import java.util.List;
 

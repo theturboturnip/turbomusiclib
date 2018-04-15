@@ -21,11 +21,12 @@ public abstract class SongSource {
         return false;
     }
     public static class DownloadData {
-        public URL downloadURL;
+        public URL url;
         public MimeType filetype;
         
-        public DownloadData(URL downloadURL, MimeType filetype){
-            this.downloadURL = downloadURL;
+        public DownloadData(){}
+        public DownloadData(URL url, MimeType filetype){
+            this.url = url;
             this.filetype = filetype;
         }
     }
