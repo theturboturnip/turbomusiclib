@@ -19,8 +19,12 @@ import com.turboturnip.turbomusiclib.common.SongSource;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -80,21 +84,27 @@ public class TaskGenerator {
     public static class DownloadTask {
         public final SongMetadata target;
         public final SongSource source;
+        public final File output;
         
-        public DownloadTask(SongMetadata target, SongSource source){
+        public DownloadTask(SongMetadata target, SongSource source, File output){
             this.target = target;
             this.source = source;
+            this.output = output;
         }
     }
     public static class FilterTask {
         public final File input;
+        public final List<String> extraInputs;
+        public final Map<Integer, Integer> filterChainToExtraInputStart;
         public final File output;
-        public final String filter;
+        public final List<FFmpegFilterChain> filterChains;
         
-        public FilterTask(){
-            input = null;
-            output = null;
-            filter = null;
+        public FilterTask(File input, List<String> extraInputs, Map<Integer, Integer> fcteis, File output, List<FFmpegFilterChain> filterChains){
+            this.input = input;           
+            this.extraInputs = extraInputs;
+            this.filterChainToExtraInputStart = fcteis;
+            this.output = output;
+            this.filterChains = filterChains;
         }
     }
     public static class FinalTransferTask {
@@ -143,7 +153,7 @@ public class TaskGenerator {
             this(new LibraryFilterALL(), false, new LibraryFilterALL(), false);
         }
     }
-    public static Tasks generateTasks(Library library, PathOptions paths, TaskGenerationOptions options){
+    public static Tasks generateTasks(Library library, List<FFmpegFilterChain> filterChains, PathOptions paths, TaskGenerationOptions options){
         // The songs to be filtered and moved into the output folder
         List<Song> expectedOutputSongs = library.getSongsFromIds(library.getFilteredSongIds(options.songsToFilter));
         expectedOutputSongs.removeIf(s -> !library.getSongSourceForId(s.sourceId.idOfSource).getDoesFilter());
@@ -175,27 +185,49 @@ public class TaskGenerator {
             tasks.filterTasks = new HashSet<>();
             tasks.finalTransferTasks = new HashSet<>();
             
+            List<String> extraInputs = new ArrayList<>();
+            Map<Integer, Integer> filterChainToExtraInputStart = new HashMap<>();
+            for(int i = 0; i < filterChains.size(); i++){
+                FFmpegFilterChain filterChain = filterChains.get(i);
+                String[] extraInputsForChain = filterChain.extraInputs();
+                if (extraInputsForChain == null || extraInputsForChain.length == 0) continue;
+                
+                filterChainToExtraInputStart.put(i, extraInputs.size());
+                extraInputs.addAll(Arrays.asList(extraInputsForChain));
+            }
+            
             toFilter.forEach((SongMetadata songMetadata) -> {
                 SongSource source = library.getSongSourceForId(songMetadata.baseSong.sourceId.idOfSource);
                 if (!source.getGeneratesFiles()) return;
                 
                 File lastKnownLocation;
+                
+                File downloadFile = new File(new File(paths.downloadsDirectory, source.getId()), songMetadata.baseSong.sourceId.idWithinSource);
+                boolean downloadOutOfDate = options.forceRedownload || !downloadFile.exists();
+                
                 if (source.getDoesDownload()){
-                    File outputFile = new File(new File(paths.downloadsDirectory, source.getId()), songMetadata.baseSong.sourceId.idWithinSource);
-                    if (options.forceRedownload || !outputFile.exists())
-                        tasks.downloadTasks.add(new DownloadTask(songMetadata, source));
+                    if (downloadOutOfDate){
+                        tasks.downloadTasks.add(new DownloadTask(songMetadata, source, downloadFile));
+                    }
                     
-                    lastKnownLocation = outputFile;
+                    lastKnownLocation = downloadFile;
                 }else{
                     lastKnownLocation = source.getFilterInputFile(songMetadata.baseSong);
                 }
                 
+                File filterOutput = new File(new File(paths.filterTempDirectory, source.getId()), songMetadata.baseSong.sourceId.idWithinSource + ".mp3");
+                boolean filterOutOfDate = options.forceRefilter || downloadOutOfDate || filterOutput.exists();
+                
                 if (source.getDoesFilter()){
-                    // TODO: Filter!
+                    if (filterOutOfDate)
+                        tasks.filterTasks.add(new FilterTask(lastKnownLocation, extraInputs, filterChainToExtraInputStart, filterOutput, filterChains));
+                    lastKnownLocation = filterOutput;
                 }
                 
                 File targetOutputLocation = new File(new File(paths.finalOutputDirectory, source.getId()), songMetadata.baseSong.name + ".mp3");
-                tasks.finalTransferTasks.add(new FinalTransferTask(lastKnownLocation, targetOutputLocation, songMetadata));
+                boolean finalTransferOutOfDate = filterOutOfDate || !targetOutputLocation.exists();
+                if (finalTransferOutOfDate)
+                    tasks.finalTransferTasks.add(new FinalTransferTask(lastKnownLocation, targetOutputLocation, songMetadata));
             });
         }
         {
