@@ -12,6 +12,7 @@ import com.mpatric.mp3agic.Mp3File;
 import com.mpatric.mp3agic.UnsupportedTagException;
 import com.turboturnip.turbomusiclib.common.Library;
 import com.turboturnip.turbomusiclib.common.Song;
+import com.turboturnip.turbomusiclib.common.SongSource;
 import com.turboturnip.turbomusiclib.common.filters.*;
 import java.io.File;
 import java.io.IOException;
@@ -75,14 +76,10 @@ public class TaskGenerator {
         }
     }
     public static class DownloadTask {
-        public final URL input;
-        public final File output;
         public final SongMetadata target;
         
         public DownloadTask(SongMetadata target){
             this.target = target;
-            this.input = target.source.source.downloadSource();
-            this.output = target.source.source.resultantInputFile();
         }
     }
     public static class FilterTask {
@@ -145,7 +142,7 @@ public class TaskGenerator {
     public static Tasks generateTasks(Library library, PathOptions paths, TaskGenerationOptions options){
         // The songs to be filtered and moved into the output folder
         List<Song> expectedOutputSongs = library.getSongsFromIds(library.getFilteredSongIds(options.songsToFilter));
-        expectedOutputSongs.removeIf(s -> !s.source.isFiltered());
+        expectedOutputSongs.removeIf(s -> !library.getSongSourceForId(s.sourceId.idOfSource).getDoesFilter());
         Set<SongMetadata> expectedOutputSongMetadata = new HashSet<>();
         expectedOutputSongs.forEach((song) -> {
             expectedOutputSongMetadata.add(new SongMetadata(song, library));
@@ -170,28 +167,52 @@ public class TaskGenerator {
         // Define the tasks we need to perform
         Tasks tasks = new Tasks();
         {
-            // Define the set of songs we need to download
-            Set<SongMetadata> toDownload = new HashSet<>(toFilter);
+            tasks.downloadTasks = new HashSet<>();
+            tasks.filterTasks = new HashSet<>();
+            tasks.finalTransferTasks = new HashSet<>();
+            
+            toFilter.forEach((songMetadata) -> {
+                SongSource source = library.getSongSourceForId(songMetadata.source.sourceId.idOfSource);
+                if (!source.getGeneratesFiles()) return;
+                
+                File lastKnownLocation;
+                if (source.getDoesDownload()){
+                    File outputFile = new File(new File(paths.downloadsDirectory, source.getId()), songMetadata.source.sourceId.idWithinSource);
+                    if (options.forceRedownload || !outputFile.exists())
+                        tasks.downloadTasks.add(new DownloadTask(songMetadata));
+                    
+                    lastKnownLocation = outputFile;
+                }else{
+                    lastKnownLocation = source.getFilterInputFile(songMetadata.source);
+                }
+                
+                if (source.getDoesFilter()){
+                    // TODO: Filter!
+                }
+                
+                File targetOutputLocation = new File(new File(paths.finalOutputDirectory, source.getId()), songMetadata.source.name + ".mp3");
+                tasks.finalTransferTasks.add(new FinalTransferTask(lastKnownLocation, targetOutputLocation, songMetadata));
+            });
+            
+            /*Set<SongMetadata> toDownload = new HashSet<>(toFilter);
             toDownload.removeIf(songMetadata -> !songMetadata.source.source.isDownloaded());
             if (!options.forceRedownload){
                 toDownload.removeIf(songMetadata -> songMetadata.source.source.resultantInputFile().exists());
             }
             
             // Add the relevant tasks
-            tasks.downloadTasks = new HashSet<>();
-            toDownload.forEach((songMetadata) -> tasks.downloadTasks.add(new DownloadTask(songMetadata)));
+            toDownload.forEach((songMetadata) -> );*/
         }
         {
             // The set of songs we need to filter is already known, just populate the tasks.
-            tasks.filterTasks = new HashSet<>();
-            tasks.finalTransferTasks = new HashSet<>();
-            toFilter.forEach((SongMetadata songMetadata) -> {
+            
+            /*toFilter.forEach((SongMetadata songMetadata) -> {
                 File lastKnownLocation = songMetadata.source.source.resultantInputFile();
                 File intermediateTempFile = new File(paths.filterTempDirectory, songMetadata.source.id + ".mp3");
                 // TODO: Filter!
                 // for (Filter in filters) { stuff; lastKnownLocation = intermediateTempFile; }
                 tasks.finalTransferTasks.add(new FinalTransferTask(lastKnownLocation, songMetadata.source.source.getFinalOutputFile(paths.finalOutputDirectory), songMetadata));
-            });
+            });*/
         }
         {
             // Define the set of songs we need to delete

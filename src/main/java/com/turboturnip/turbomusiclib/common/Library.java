@@ -14,28 +14,20 @@ import java.util.List;
  * @author samuel
  */
 public abstract class Library {
-    /*
- 
+
+    public abstract void addSongSource(SongSource instance);
+    public abstract SongSource getSongSourceForId(String id);
+    public abstract void clearSongSourceForId(String idToClear);
     
-    
-    public abstract int getNextArtistId();
-    public abstract void addArtist(Artist toAdd); // Dumb add, doesn't do any checks
-    
-    public abstract int getNextAlbumId();
-    public abstract void addAlbum(Album toAdd); // Dumb add, doesn't do any checks
-    
-    public abstract int getNextSongId();
-    public abstract void addSong(Song toAdd); // Dumb add, doesn't do any checks*/
-    
-    public abstract SongCollectionSource getSource(int index);
-    public abstract void addSource(SongCollectionSource source);
-    public abstract void removeSource(int index);
-    public abstract void updateSource(int index, SongCollectionSource newSource);
+    public abstract SongCollectionSource getCollectionSource(int index);
+    public abstract void addCollectionSource(SongCollectionSource source);
+    public abstract void removeCollectionSource(int index);
+    public abstract void updateCollectionSource(int index, SongCollectionSource newSource);
     public void updateKnownSongs(){
         updateKnownSongs(false);
     }
     public abstract void updateKnownSongs(boolean forceUpdateAll);
-    public abstract int getSourceCount();
+    public abstract int getCollectionSourceCount();
     
     public abstract List<SongId> getAllSongIds();
     public abstract List<SongId> getFilteredSongIds(LibraryFilter baseFilter);
