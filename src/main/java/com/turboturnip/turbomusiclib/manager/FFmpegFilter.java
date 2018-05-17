@@ -9,9 +9,9 @@ package com.turboturnip.turbomusiclib.manager;
  *
  * @author samuel
  */
-public abstract class FFmpegFilterChain {
+public abstract class FFmpegFilter {
     
-    public FFmpegFilterChainPrerequisite prerequisiteCommand(){
+    public FFmpegFilterPrerequisite prerequisiteCommand(){
         return null;
     }
     

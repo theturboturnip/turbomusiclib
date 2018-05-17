@@ -18,13 +18,8 @@ import com.turboturnip.turbomusiclib.common.Song;
 import com.turboturnip.turbomusiclib.common.SongSource;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -34,20 +29,11 @@ import java.util.Set;
  */
 public class TaskGenerator {
     public static class SongMetadata {
-        public Song baseSong; // OPTIONAL
         public String name;
         public String artist;
         public String album;
         
-        public SongMetadata(Song source, Library library){
-            this.baseSong = source;
-            name = source.name;
-            artist = library.getArtistFromId(source.artistId).name;
-            if (source.albumId < 0) album = "";
-            else album = library.getAlbumFromId(source.albumId).name;
-        }
         public SongMetadata(String name, String artist, String album){
-            this.baseSong = null;
             if (name == null)
                 this.name = "";
             else
@@ -74,7 +60,7 @@ public class TaskGenerator {
             if (obj == null) {
                 return false;
             }
-            if (getClass() != obj.getClass()) {
+            if (!(obj instanceof SongMetadata)) {
                 return false;
             }
             final SongMetadata other = (SongMetadata) obj;
@@ -90,12 +76,33 @@ public class TaskGenerator {
             return true;
         }
     }
+    public static class OriginalSongMetadata extends SongMetadata{
+        public Song baseSong;
+        
+        public OriginalSongMetadata(Song baseSong, Library library){
+            super(baseSong.name, library.getArtistFromId(baseSong.artistId).name, baseSong.albumId < 0 ? "" : library.getAlbumFromId(baseSong.albumId).name);
+            this.baseSong = baseSong;
+        }
+    }
+    private static class FileMetadataPair {
+        public File file;
+        public SongMetadata metadata;
+        
+        public FileMetadataPair(File file, SongMetadata metadata){
+            assert(file != null);
+            assert(metadata != null);
+            
+            this.file = file;
+            this.metadata = metadata;
+        }
+    }
+    
     public static class DownloadTask {
-        public final SongMetadata target;
+        public final OriginalSongMetadata target;
         public final SongSource source;
         public final File output;
         
-        public DownloadTask(SongMetadata target, SongSource source, File output){
+        public DownloadTask(OriginalSongMetadata target, SongSource source, File output){
             this.target = target;
             this.source = source;
             this.output = output;
@@ -104,9 +111,9 @@ public class TaskGenerator {
     public static class FilterTask {
         public final File input;
         public final File output;
-        public final List<FFmpegFilterChain> filterChains;
+        public final List<FFmpegFilter> filterChains;
         
-        public FilterTask(File input, File output, List<FFmpegFilterChain> filterChains){
+        public FilterTask(File input, File output, List<FFmpegFilter> filterChains){
             this.input = input;           
             this.output = output;
             this.filterChains = filterChains;
@@ -115,9 +122,9 @@ public class TaskGenerator {
     public static class FinalTransferTask {
         public final File input;
         public final File output;
-        public final SongMetadata target;
+        public final OriginalSongMetadata target;
         
-        public FinalTransferTask(File input, File output, SongMetadata target){
+        public FinalTransferTask(File input, File output, OriginalSongMetadata target){
             this.input = input;
             this.output = output;
             this.target = target;
@@ -158,13 +165,13 @@ public class TaskGenerator {
             this(new LibraryFilterALL(), false, new LibraryFilterALL(), false);
         }
     }
-    public static Tasks generateTasks(Library library, List<FFmpegFilterChain> filterChains, PathOptions paths, TaskGenerationOptions options){
+    public static Tasks generateTasks(Library library, List<FFmpegFilter> filters, PathOptions paths, TaskGenerationOptions options){
         // The songs to be filtered and moved into the output folder
         List<Song> expectedOutputSongs = library.getSongsFromIds(library.getFilteredSongIds(options.songsToFilter));
         expectedOutputSongs.removeIf(s -> !library.getSongSourceForId(s.sourceId.idOfSource).getDoesFilter());
-        Set<SongMetadata> expectedOutputSongMetadata = new HashSet<>();
+        Set<OriginalSongMetadata> expectedOutputSongMetadata = new HashSet<>();
         expectedOutputSongs.forEach((song) -> {
-            expectedOutputSongMetadata.add(new SongMetadata(song, library));
+            expectedOutputSongMetadata.add(new OriginalSongMetadata(song, library));
         });
         
         // Find the songs we currently have in the output folder
@@ -172,12 +179,12 @@ public class TaskGenerator {
         populateCurrentSongMetadataSet(currentOutputSongMetadataPairs, paths.finalOutputDirectory);
         
         // Find the songs we don't have in the output folder
-        Set<SongMetadata> missingSongs = new HashSet<>();
+        Set<OriginalSongMetadata> missingSongs = new HashSet<>();
         missingSongs.addAll(expectedOutputSongMetadata);
         missingSongs.removeIf(songMetadata -> currentOutputSongMetadataPairs.stream().anyMatch(otherMetadataPair -> otherMetadataPair.metadata.equals(songMetadata)));
         
         // Define the set of songs we need to filter
-        Set<SongMetadata> toFilter;
+        Set<OriginalSongMetadata> toFilter;
         if (options.forceRefilter)
             toFilter = expectedOutputSongMetadata;
         else
@@ -190,7 +197,7 @@ public class TaskGenerator {
             tasks.filterTasks = new HashSet<>();
             tasks.finalTransferTasks = new HashSet<>();
             
-            toFilter.forEach((SongMetadata songMetadata) -> {
+            toFilter.forEach((OriginalSongMetadata songMetadata) -> {
                 SongSource source = library.getSongSourceForId(songMetadata.baseSong.sourceId.idOfSource);
                 if (!source.getGeneratesFiles()) return;
                 
@@ -214,7 +221,7 @@ public class TaskGenerator {
                 
                 if (source.getDoesFilter()){
                     if (filterOutOfDate)
-                        tasks.filterTasks.add(new FilterTask(lastKnownLocation, filterOutput, filterChains));
+                        tasks.filterTasks.add(new FilterTask(lastKnownLocation, filterOutput, filters));
                     lastKnownLocation = filterOutput;
                 }
                 
@@ -242,18 +249,6 @@ public class TaskGenerator {
         for (File file : searchFolder.listFiles()){
             if (file.isDirectory()) populateCurrentSongMetadataSet(toPopulate, file);
             else if (file.getName().endsWith(".mp3")) toPopulate.add(new FileMetadataPair(file, getSongMetadata(file)));
-        }
-    }
-    private static class FileMetadataPair {
-        public File file;
-        public SongMetadata metadata;
-        
-        public FileMetadataPair(File file, SongMetadata metadata){
-            assert(file != null);
-            assert(metadata != null);
-            
-            this.file = file;
-            this.metadata = metadata;
         }
     }
     private static SongMetadata getSongMetadata(File sourceMP3){

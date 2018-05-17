@@ -9,8 +9,13 @@ package com.turboturnip.turbomusiclib.manager;
  *
  * @author samuel
  */
-public interface FFmpegFilterChainPrerequisite {
+public class FFmpegFilterPrerequisite {
     // The contents of this array will be inserted between "ffmpeg -i <path>" and "-f null -".
     // The output of the resulting command will be given to the FFMpegFilter using this prerequisite.
-    public String[] getCommand();
+    public final String[] command;
+    
+    public FFmpegFilterPrerequisite(String... command){
+        assert(command.length > 0);
+        this.command = command;
+    }
 }
