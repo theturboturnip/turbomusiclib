@@ -15,15 +15,14 @@ public abstract class FFmpegFilterChain {
         return null;
     }
     
-    // The contents of this array will be inserted just after "ffmpeg -i <path>"
-    public String[] extraInputs(){
+    // These will be inserted as extra audio sources like "ffmpeg -i [input_file] -f lavfi -i [extra_audio_source_1] -i [extra_audio_source_2]..."
+    public String[] extraAudioSources(){
         return null;
     }
+    // This has to be synchronized so that filter chain can use static things like Patterns?
     // This will be inserted as an lavfi filter between other filters in the chain. Do not specify the output, that will be done for you.
-    protected abstract String filterCommand_internal(int extraInputStartIndex, String prerequisiteOutput);
-    public final String filterCommand(int extraInputStartIndex, String prerequisiteOutput){
-        synchronized(this){
-            return filterCommand_internal(extraInputStartIndex, prerequisiteOutput);
-        }
+    protected abstract String filterCommand_internal(int extraAudioSourcesStartIndex, String prerequisiteOutput);
+    public synchronized final String filterCommand(int extraAudioSourcesStartIndex, String prerequisiteOutput){
+        return filterCommand_internal(extraAudioSourcesStartIndex, prerequisiteOutput);
     }
 }

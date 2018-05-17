@@ -48,9 +48,18 @@ public class TaskGenerator {
         }
         public SongMetadata(String name, String artist, String album){
             this.baseSong = null;
-            this.name = name;
-            this.artist = artist;
-            this.album = album;
+            if (name == null)
+                this.name = "";
+            else
+                this.name = name;
+            if (artist == null)
+                this.artist = "";
+            else
+                this.artist = artist;
+            if (album == null)
+                this.album = "";
+            else
+                this.album = album;
         }
         
         @Override
@@ -94,15 +103,11 @@ public class TaskGenerator {
     }
     public static class FilterTask {
         public final File input;
-        public final List<String> extraInputs;
-        public final Map<Integer, Integer> filterChainToExtraInputStart;
         public final File output;
         public final List<FFmpegFilterChain> filterChains;
         
-        public FilterTask(File input, List<String> extraInputs, Map<Integer, Integer> fcteis, File output, List<FFmpegFilterChain> filterChains){
+        public FilterTask(File input, File output, List<FFmpegFilterChain> filterChains){
             this.input = input;           
-            this.extraInputs = extraInputs;
-            this.filterChainToExtraInputStart = fcteis;
             this.output = output;
             this.filterChains = filterChains;
         }
@@ -185,17 +190,6 @@ public class TaskGenerator {
             tasks.filterTasks = new HashSet<>();
             tasks.finalTransferTasks = new HashSet<>();
             
-            List<String> extraInputs = new ArrayList<>();
-            Map<Integer, Integer> filterChainToExtraInputStart = new HashMap<>();
-            for(int i = 0; i < filterChains.size(); i++){
-                FFmpegFilterChain filterChain = filterChains.get(i);
-                String[] extraInputsForChain = filterChain.extraInputs();
-                if (extraInputsForChain == null || extraInputsForChain.length == 0) continue;
-                
-                filterChainToExtraInputStart.put(i, extraInputs.size());
-                extraInputs.addAll(Arrays.asList(extraInputsForChain));
-            }
-            
             toFilter.forEach((SongMetadata songMetadata) -> {
                 SongSource source = library.getSongSourceForId(songMetadata.baseSong.sourceId.idOfSource);
                 if (!source.getGeneratesFiles()) return;
@@ -220,7 +214,7 @@ public class TaskGenerator {
                 
                 if (source.getDoesFilter()){
                     if (filterOutOfDate)
-                        tasks.filterTasks.add(new FilterTask(lastKnownLocation, extraInputs, filterChainToExtraInputStart, filterOutput, filterChains));
+                        tasks.filterTasks.add(new FilterTask(lastKnownLocation, filterOutput, filterChains));
                     lastKnownLocation = filterOutput;
                 }
                 
@@ -255,6 +249,9 @@ public class TaskGenerator {
         public SongMetadata metadata;
         
         public FileMetadataPair(File file, SongMetadata metadata){
+            assert(file != null);
+            assert(metadata != null);
+            
             this.file = file;
             this.metadata = metadata;
         }
