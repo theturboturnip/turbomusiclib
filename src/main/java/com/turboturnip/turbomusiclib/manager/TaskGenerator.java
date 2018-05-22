@@ -8,19 +8,12 @@ package com.turboturnip.turbomusiclib.manager;
 import com.turboturnip.turbomusiclib.common.library_filters.LibraryFilterALL;
 import com.turboturnip.turbomusiclib.common.library_filters.LibraryFilter;
 import com.turboturnip.turbomusiclib.common.library_filters.LibraryFilterOR;
-import com.mpatric.mp3agic.ID3v1;
-import com.mpatric.mp3agic.ID3v2;
-import com.mpatric.mp3agic.InvalidDataException;
-import com.mpatric.mp3agic.Mp3File;
-import com.mpatric.mp3agic.UnsupportedTagException;
 import com.turboturnip.turbomusiclib.common.Library;
 import com.turboturnip.turbomusiclib.common.Song;
 import com.turboturnip.turbomusiclib.common.SongSource;
 import java.io.File;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -28,62 +21,6 @@ import java.util.Set;
  * @author samuel
  */
 public class TaskGenerator {
-    public static class SongMetadata {
-        public String name;
-        public String artist;
-        public String album;
-        
-        public SongMetadata(String name, String artist, String album){
-            if (name == null)
-                this.name = "";
-            else
-                this.name = name;
-            if (artist == null)
-                this.artist = "";
-            else
-                this.artist = artist;
-            if (album == null)
-                this.album = "";
-            else
-                this.album = album;
-        }
-        
-        @Override
-        public int hashCode(){
-            return 17 * (7 * name.hashCode() ^ 13 * artist.hashCode()) ^ 23 * album.hashCode();
-        }
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (!(obj instanceof SongMetadata)) {
-                return false;
-            }
-            final SongMetadata other = (SongMetadata) obj;
-            if (!Objects.equals(this.name, other.name)) {
-                return false;
-            }
-            if (!Objects.equals(this.artist, other.artist)) {
-                return false;
-            }
-            if (!Objects.equals(this.album, other.album)) {
-                return false;
-            }
-            return true;
-        }
-    }
-    public static class OriginalSongMetadata extends SongMetadata{
-        public Song baseSong;
-        
-        public OriginalSongMetadata(Song baseSong, Library library){
-            super(baseSong.name, library.getArtistFromId(baseSong.artistId).name, baseSong.albumId < 0 ? "" : library.getAlbumFromId(baseSong.albumId).name);
-            this.baseSong = baseSong;
-        }
-    }
     private static class FileMetadataPair {
         public File file;
         public SongMetadata metadata;
@@ -165,7 +102,7 @@ public class TaskGenerator {
             this(new LibraryFilterALL(), false, new LibraryFilterALL(), false);
         }
     }
-    public static Tasks generateTasks(Library library, List<FFmpegFilter> filters, PathOptions paths, TaskGenerationOptions options){
+    public static Tasks generateTasks(Library library, List<FFmpegFilter> filters, SongMetadataGenerator metadataGenerator, PathOptions paths, TaskGenerationOptions options){
         // The songs to be filtered and moved into the output folder
         List<Song> expectedOutputSongs = library.getSongsFromIds(library.getFilteredSongIds(options.songsToFilter));
         expectedOutputSongs.removeIf(s -> !library.getSongSourceForId(s.sourceId.idOfSource).getDoesFilter());
@@ -176,7 +113,7 @@ public class TaskGenerator {
         
         // Find the songs we currently have in the output folder
         Set<FileMetadataPair> currentOutputSongMetadataPairs = new HashSet<>();
-        populateCurrentSongMetadataSet(currentOutputSongMetadataPairs, paths.finalOutputDirectory);
+        populateCurrentSongMetadataSet(currentOutputSongMetadataPairs, metadataGenerator, paths.finalOutputDirectory);
         
         // Find the songs we don't have in the output folder
         Set<OriginalSongMetadata> missingSongs = new HashSet<>();
@@ -244,27 +181,11 @@ public class TaskGenerator {
         
         return tasks;
     }
-    private static void populateCurrentSongMetadataSet(Set<FileMetadataPair> toPopulate, File searchFolder){
+    private static void populateCurrentSongMetadataSet(Set<FileMetadataPair> toPopulate, SongMetadataGenerator metadataGenerator, File searchFolder){
         if (searchFolder.listFiles() == null) return;
         for (File file : searchFolder.listFiles()){
-            if (file.isDirectory()) populateCurrentSongMetadataSet(toPopulate, file);
-            else if (file.getName().endsWith(".mp3")) toPopulate.add(new FileMetadataPair(file, getSongMetadata(file)));
+            if (file.isDirectory()) populateCurrentSongMetadataSet(toPopulate, metadataGenerator, file);
+            else toPopulate.add(new FileMetadataPair(file, metadataGenerator.FromFile(file)));
         }
-    }
-    private static SongMetadata getSongMetadata(File sourceMP3){
-        try{
-            Mp3File mp3File = new Mp3File(sourceMP3);
-            if (mp3File.hasId3v1Tag()){
-                ID3v1 tag = mp3File.getId3v1Tag();
-                return new SongMetadata(tag.getTitle(), tag.getArtist(), tag.getAlbum());
-            }else if (mp3File.hasId3v2Tag()){
-                ID3v2 tag = mp3File.getId3v2Tag();
-                return new SongMetadata(tag.getTitle(), tag.getArtist(), tag.getAlbum());   
-            }
-        }catch(IOException | UnsupportedTagException | InvalidDataException e){
-            e.printStackTrace();
-        }
-        
-        return new SongMetadata(sourceMP3.getName().split("\\.(?:[a-zA-Z0-9]+$)")[0], "", "");
     }
 }
