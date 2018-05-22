@@ -7,7 +7,10 @@ package com.turboturnip.turbomusiclib.common;
 
 import com.turboturnip.turbomusiclib.common.library_filters.LibraryFilter;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  *
@@ -29,10 +32,9 @@ public abstract class Library {
     public abstract void updateKnownSongs(boolean forceUpdateAll);
     public abstract int getCollectionSourceCount();
     
-    public abstract List<SongId> getAllSongIds();
-    public abstract List<SongId> getFilteredSongIds(LibraryFilter baseFilter);
-    public abstract List<Integer> getAllAlbumIds();
-    public abstract List<Integer> getAllArtistIds();
+    public abstract Set<SongId> getAllSongIds();
+    public abstract Set<Integer> getAllAlbumIds();
+    public abstract Set<Integer> getAllArtistIds();
 
     public abstract int getUndupedArtistId(Artist artist);
     public Artist undupeArtist(Artist artist){
@@ -47,31 +49,31 @@ public abstract class Library {
         return new Album(album, newId);
     }
     
-    public List<SongId> getSongIdsInAlbum(Album album){
+    public Set<SongId> getSongIdsInAlbum(Album album){
         return getSongIdsInAlbum(album.id);
     }
-    public abstract List<SongId> getSongIdsInAlbum(int albumId);
+    public abstract Set<SongId> getSongIdsInAlbum(int albumId);
     
-    public List<SongId> getSongIdsByArtist(Artist artist){
+    public Set<SongId> getSongIdsByArtist(Artist artist){
         return getSongIdsByArtist(artist.id);
     }
-    public abstract List<SongId> getSongIdsByArtist(int artistId);
+    public abstract Set<SongId> getSongIdsByArtist(int artistId);
     
-    public List<Integer> getAlbumIdsByArtist(Artist artist){
+    public Set<Integer> getAlbumIdsByArtist(Artist artist){
         return getAlbumIdsByArtist(artist.id);
     }
-    public abstract List<Integer> getAlbumIdsByArtist(int artistId);
+    public abstract Set<Integer> getAlbumIdsByArtist(int artistId);
     
-    public List<Song> getSongsFromIds(List<SongId> ids){
-        List<Song> songs = new ArrayList<>(ids.size());
+    public Set<Song> getSongsFromIds(Collection<SongId> ids){
+        Set<Song> songs = new HashSet<>();
         for (SongId id : ids){
             songs.add(getSongFromId(id));
         }
         return songs;
     }
     public abstract Song getSongFromId(SongId id);
-    public List<Album> getAlbumsFromIds(List<Integer> ids){
-        List<Album> albums = new ArrayList<>(ids.size());
+    public Set<Album> getAlbumsFromIds(Collection<Integer> ids){
+        Set<Album> albums = new HashSet<>();
         for (Integer id : ids){
             albums.add(getAlbumFromId(id));
         }
@@ -79,8 +81,8 @@ public abstract class Library {
     }
     public abstract Album getAlbumFromId(int id);
 
-    public List<Artist> getArtistsFromIds(List<Integer> ids){
-        List<Artist> artists = new ArrayList<>(ids.size());
+    public Set<Artist> getArtistsFromIds(Collection<Integer> ids){
+        Set<Artist> artists = new HashSet<>();
         for (Integer id : ids){
             artists.add(getArtistFromId(id));
         }

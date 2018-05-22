@@ -7,7 +7,6 @@ package com.turboturnip.turbomusiclib.manager;
 
 import com.turboturnip.turbomusiclib.common.library_filters.LibraryFilterALL;
 import com.turboturnip.turbomusiclib.common.library_filters.LibraryFilter;
-import com.turboturnip.turbomusiclib.common.library_filters.LibraryFilterOR;
 import com.turboturnip.turbomusiclib.common.Library;
 import com.turboturnip.turbomusiclib.common.Song;
 import com.turboturnip.turbomusiclib.common.SongSource;
@@ -87,24 +86,22 @@ public class TaskGenerator {
         public File finalOutputDirectory;
     }
     public static class TaskGenerationOptions {
-        public LibraryFilter songsToDownload;
         public boolean forceRedownload;
         public LibraryFilter songsToFilter;
         public boolean forceRefilter;
         
-        public TaskGenerationOptions(LibraryFilter songsToDownload, boolean forceRedownload, LibraryFilter songsToFilter, boolean forceRefilter){
-            this.songsToDownload = songsToDownload;
+        public TaskGenerationOptions(boolean forceRedownload, LibraryFilter songsToFilter, boolean forceRefilter){
             this.forceRedownload = forceRedownload;
-            this.songsToFilter = new LibraryFilterOR(songsToDownload, songsToFilter);
+            this.songsToFilter = songsToFilter;
             this.forceRefilter = forceRefilter;
         }
         public TaskGenerationOptions(){
-            this(new LibraryFilterALL(), false, new LibraryFilterALL(), false);
+            this(false, new LibraryFilterALL(), false);
         }
     }
     public static Tasks generateTasks(Library library, List<FFmpegFilter> filters, SongMetadataGenerator metadataGenerator, PathOptions paths, TaskGenerationOptions options){
         // The songs to be filtered and moved into the output folder
-        List<Song> expectedOutputSongs = library.getSongsFromIds(library.getFilteredSongIds(options.songsToFilter));
+        Set<Song> expectedOutputSongs = library.getSongsFromIds(options.songsToFilter.songsThatFit(library));
         expectedOutputSongs.removeIf(s -> !library.getSongSourceForId(s.sourceId.idOfSource).getDoesFilter());
         Set<OriginalSongMetadata> expectedOutputSongMetadata = new HashSet<>();
         expectedOutputSongs.forEach((song) -> {

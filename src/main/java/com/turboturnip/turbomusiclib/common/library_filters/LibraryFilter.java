@@ -5,12 +5,16 @@
  */
 package com.turboturnip.turbomusiclib.common.library_filters;
 
+import com.turboturnip.turbomusiclib.common.Library;
+import com.turboturnip.turbomusiclib.common.Song;
+import com.turboturnip.turbomusiclib.common.SongId;
+import java.util.Set;
+
 /**
  *
  * @author samuel
  */
 public abstract class LibraryFilter {
-    public static interface Translator<OutputType> {
-        public OutputType translateFilter(LibraryFilter toTranslate);
-    }
+    public abstract boolean fitsSong(Song testAgainst);
+    public abstract Set<SongId> songsThatFit(Library library);
 }
